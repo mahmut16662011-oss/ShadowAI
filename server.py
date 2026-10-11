@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 mcp = FastMCP("ShadowAI Chess.com", json_response=True)
 mcp.settings.host = os.getenv("HOST", "0.0.0.0")
@@ -16,16 +17,19 @@ HEADERS = {
     "Accept": "application/json",
 }
 
+
 def normalize_username(value: str) -> str:
     value = value.strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{2,30}", value):
         raise ValueError("Invalid Chess.com username.")
     return value.lower()
 
+
 async def get_json(client: httpx.AsyncClient, url: str) -> dict[str, Any]:
     response = await client.get(url, headers=HEADERS, timeout=20.0)
     response.raise_for_status()
     return response.json()
+
 
 @mcp.tool()
 async def find_chesscom_games(opponent: str, username: str = "shadowmahmud", limit: int = 10) -> dict[str, Any]:
@@ -81,6 +85,7 @@ async def find_chesscom_games(opponent: str, username: str = "shadowmahmud", lim
         "archive_errors": errors[:3],
     }
 
+
 @mcp.tool()
 async def get_chesscom_player_profile(username: str = "shadowmahmud") -> dict[str, Any]:
     """Get public Chess.com profile details for a player."""
@@ -88,5 +93,14 @@ async def get_chesscom_player_profile(username: str = "shadowmahmud") -> dict[st
     async with httpx.AsyncClient(follow_redirects=True) as client:
         return await get_json(client, f"{CHESS_API}/player/{user}")
 
+
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(
+        transport="streamable-http",
+        transport_security=TransportSecuritySettings(
+            allowed_hosts=[
+                "shadowai-7o9l.onrender.com",
+                "shadowai-7o9l.onrender.com:*",
+            ],
+        ),
+    )
