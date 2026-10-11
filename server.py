@@ -7,6 +7,8 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("ShadowAI Chess.com", json_response=True)
+mcp.settings.host = os.getenv("HOST", "0.0.0.0")
+mcp.settings.port = int(os.getenv("PORT", "8000"))
 
 CHESS_API = "https://api.chess.com/pub"
 HEADERS = {
