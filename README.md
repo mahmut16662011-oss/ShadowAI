@@ -1,15 +1,22 @@
-# ShadowAI — Chess.com Game Finder
+# ShadowAI Chess.com agent backend
 
-A phone-friendly prototype that searches a public Chess.com player's game archives for games against a specified opponent.
+This repository contains a public-game search tool for ChatGPT/MCP integration.
 
-## Current status
-- Uses Chess.com's public Published Data API; no password or OAuth token is requested.
-- Searches the player's public monthly archives and lists matching games with links and PGN display/copy actions.
-- This is currently a standalone browser prototype, **not yet connected to ChatGPT as a callable agent tool**.
-- Private inbox messages are not accessed.
+## Tool
+- `find_chesscom_games(opponent, username="shadowmahmud", limit=10)`: searches public monthly Chess.com archives newest-first and returns matching game metadata and PGN.
+- `get_chesscom_player_profile(username="shadowmahmud")`: retrieves public profile data.
 
-## Run
-Open `index.html` in a browser or host it as a static site (for example, GitHub Pages). If the browser blocks API requests due to CORS, a small server-side proxy will be needed.
+No password, session cookie, or OAuth token is used. It does not read inbox messages or private account data.
 
-## Next step
-To make ChatGPT respond to a request like “analyze my game against Abukamal” without manual PGN copying, connect a hosted API endpoint to a ChatGPT tool/plugin and have it return the matching game's PGN.
+## Run locally
+```bash
+pip install -r requirements.txt
+python server.py
+```
+The MCP Streamable HTTP server listens on port 8000 by default.
+
+## Important deployment status
+The source code is prepared, but it is **not hosted or connected to ChatGPT yet**. A reachable HTTPS deployment is required before ChatGPT can call these tools. The repository alone is not a live backend. Use a hosting provider that supports a persistent Python web service and set the service start command to `python server.py`.
+
+## API behavior
+The tool reads public archives from Chess.com's Published Data API and returns PGN records where available. Requests may fail if Chess.com rate-limits or denies access. In that case, the tool reports the request failure instead of inventing results.
