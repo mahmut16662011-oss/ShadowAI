@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShadowAI — Chess.com Game Finder</title>
+<style>
+:root{color-scheme:dark}body{font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:24px 16px;background:#111827;color:#f3f4f6}h1{margin-bottom:4px}p{color:#cbd5e1;line-height:1.5}label{display:block;margin:16px 0 6px}input,button{font:inherit;padding:12px;border-radius:10px;border:1px solid #475569}input{width:100%;box-sizing:border-box;background:#1f2937;color:white}button{margin-top:14px;background:#2563eb;color:white;border:0;font-weight:700;cursor:pointer}button:disabled{opacity:.6}article{padding:14px;margin:12px 0;border:1px solid #374151;border-radius:12px;background:#1f2937}a{color:#93c5fd}.muted{color:#94a3b8;font-size:.9rem}pre{white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto}#status{margin-top:14px;white-space:pre-wrap}button.secondary{background:#374151;margin-left:8px}
+</style></head>
+<body>
+<h1>♟ ShadowAI</h1><p>Chess.com açık oyun arşivinde rakip adına göre maç bulucu. Şimdilik bir prototip; ChatGPT sohbetine doğrudan bağlı değildir.</p>
+<label for="username">Chess.com kullanıcı adın</label><input id="username" value="shadowmahmud" autocomplete="off">
+<label for="opponent">Rakip kullanıcı adı</label><input id="opponent" placeholder="Örn. Abukamal" autocomplete="off">
+<button id="search">Maçları bul</button><div id="status" role="status"></div><section id="results"></section>
+<script>
+const $=id=>document.getElementById(id);
+function safe(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+async function getJson(url){const r=await fetch(url,{headers:{"Accept":"application/json"}});if(!r.ok)throw Error("Chess.com API yanıtı: "+r.status);return r.json();}
+$("search").addEventListener("click",async()=>{
+ const username=$("username").value.trim().toLowerCase(), target=$("opponent").value.trim().toLowerCase();
+ if(!username||!target){$("status").textContent="Kullanıcı adını ve rakip adını yaz.";return;}
+ $("search").disabled=true;$("results").innerHTML="";$("status").textContent="Arşiv listesi alınıyor…";
+ try{
+  const archives=(await getJson("https://api.chess.com/pub/player/"+encodeURIComponent(username)+"/games/archives")).archives||[];
+  const found=[];let checked=0;
+  for(const url of archives.slice().reverse()){
+   checked++;$("status").textContent="Arşiv taranıyor: "+checked+"/"+archives.length+" ("+url.split("/").slice(-2).join("/")+")";
+   let data;try{data=await getJson(url);}catch(e){continue;}
+   for(const g of (data.games||[])){
+    const w=(g.white?.username||"").toLowerCase(),b=(g.black?.username||"").toLowerCase();
+    if(w===target||b===target)found.push({g,w,b});
+   }
+  }
+  found.sort((a,b)=>(b.g.end_time||0)-(a.g.end_time||0));
+  if(!found.length){$("status").textContent="Tamamlandı. "+checked+" arşiv kontrol edildi; bu adla eşleşen maç bulunamadı. Yazımı kontrol et.";return;}
+  $("status").textContent="Tamamlandı: "+found.length+" maç bulundu.";
+  $("results").innerHTML=found.map(({g,w,b},i)=>{const date=g.end_time?new Date(g.end_time*1000).toLocaleString():"Tarih bilinmiyor";const meWhite=w===username;const result=meWhite?g.white.result:g.black.result;const color=meWhite?"Beyaz":"Siyah";const pgn=g.pgn||"";return '<article><strong>'+safe(date)+'</strong><p>'+safe(w)+' vs '+safe(b)+' · Sen: '+color+' · Sonuç: '+safe(result||"bilinmiyor")+'</p><p><a href="'+safe(g.url||"#")+'" target="_blank" rel="noopener">Chess.com maçını aç</a></p><button data-pgn="'+i+'">PGN'+' metnini göster</button><button class="secondary" data-copy="'+i+'">PGN kopyala</button><pre id="pgn'+i+'" hidden>'+safe(pgn)+'</pre></article>';}).join("");
+  found.forEach(({g},i)=>{const pre=$("pgn"+i);document.querySelectorAll('[data-pgn="'+i+'"]')[0].onclick=()=>pre.hidden=!pre.hidden;document.querySelectorAll('[data-copy="'+i+'"]')[0].onclick=async()=>{try{await navigator.clipboard.writeText(g.pgn||"");$("status").textContent="PGN panoya kopyalandı. ChatGPT'ye yapıştırarak analiz ettirebilirsin.";}catch(e){pre.hidden=false;$("status").textContent="Otomatik kopyalama desteklenmedi; PGN metnini açıp elle kopyala.";}};});
+ }catch(e){$("status").textContent="Hata: "+e.message+"\nBu sayfa tarayıcıdan Chess.com API'sine erişemiyor olabilir."; }
+ finally{$("search").disabled=false;}
+});
+</script></body></html>
